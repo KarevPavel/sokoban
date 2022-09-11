@@ -1,19 +1,13 @@
 package karev.pavel.sokoban;
 
-import static java.lang.Double.compare;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -134,39 +128,8 @@ public class Level {
             levelWidth);
     }
 
-    private double distance(Position position1, Position position2) {
-        //AB = √(xb - xa)2 + (yb - ya)2
-        return Math.sqrt(Math.pow(position2.x + 10 - position1.x + 10 , 2) + Math.pow(position2.y + 10 - position1.y + 10, 2));
-    }
-
-    private Collection<Position> possibleMovies(Position position, Predicate<Character> movePredicate, boolean forPlayer) {
-        List<Position> positionList = getBaggs()
-            .stream()
-            .map(Baggage::getPosition)
-            .collect(Collectors.toList());
-
-        Collection<Position> answer;
-        if (forPlayer) {
-            answer = new PriorityQueue<>((position1, position2) -> {
-                SimpleEntry<Double, Double> totalSums = positionList
-                    .stream()
-                    .map(targetPosition -> {
-                        double d1 = distance(position1, targetPosition);
-                        double d2 = distance(position2, targetPosition);
-                        return new SimpleEntry<>(d1, d2);
-                    })
-                    .reduce((doubleDoubleSimpleEntry, doubleDoubleSimpleEntry2) ->
-                                new SimpleEntry<>(doubleDoubleSimpleEntry.getKey() + doubleDoubleSimpleEntry.getKey(),
-                                                  doubleDoubleSimpleEntry.getValue() + doubleDoubleSimpleEntry
-                                                      .getValue()))
-                    .orElse(null);
-
-                return Double.compare(totalSums.getKey(), totalSums.getValue());
-            });
-        } else {
-            answer = new ArrayList<>();
-        }
-
+    protected Collection<Position> possibleMovies(Position position, Predicate<Character> movePredicate) {
+        Collection<Position> answer = new ArrayList<>();
         if (position.x + 1 < levelHeight && movePredicate.test(map[position.x + 1][position.y])) {
             answer.add(new Position(position.x + 1, position.y));
         }
@@ -182,12 +145,11 @@ public class Level {
         if (position.y + 1 < levelWidth && movePredicate.test(map[position.x][position.y + 1])) {
             answer.add(new Position(position.x, position.y + 1));
         }
-        print();
         return answer;
     }
 
     public Collection<Position> availableMoves() {
-        return possibleMovies(player.getPosition(), character -> character != '#', true);
+        return possibleMovies(player.getPosition(), character -> character != '#');
     }
 
     public void print() {
@@ -215,7 +177,6 @@ public class Level {
         }
 
         var currentPlayerPosition = player.getPosition();
-        print();
         if (map[newPosition.x][newPosition.y] == '$') {
             Baggage baggage = getBaggs()
                 .stream()
@@ -285,12 +246,12 @@ public class Level {
 
         boolean allBoxesAreStucked = baggs
             .stream()
-            .allMatch(baggage -> possibleMovies(baggage.getPosition(), character -> character != '#', false).isEmpty());
+            .allMatch(baggage -> possibleMovies(baggage.getPosition(), character -> character != '#').isEmpty());
 
         if (allBoxesAreStucked)
             return Status.STUCKED;
 
-        if (possibleMovies(player.getPosition(), character -> character != '#', true).isEmpty())
+        if (possibleMovies(player.getPosition(), character -> character != '#').isEmpty())
             return Status.STUCKED;
 
 

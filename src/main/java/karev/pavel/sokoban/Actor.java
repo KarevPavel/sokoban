@@ -1,28 +1,18 @@
 package karev.pavel.sokoban;
 
 import java.awt.Image;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
+@Data
 public class Actor {
 
     private final int SPACE = 20;
 
-    @Getter
-    @Setter
     private Position position;
     private Image image;
 
     public Actor(int x, int y) {
         this.position = new Position(x, y);
-    }
-
-    public Image getImage() {
-        return image;
-    }
-
-    public void setImage(Image img) {
-        image = img;
     }
 
     public int x() {

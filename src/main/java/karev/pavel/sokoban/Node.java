@@ -1,9 +1,11 @@
 package karev.pavel.sokoban;
 
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.ToString;
 
@@ -41,6 +43,36 @@ public class Node {
         for (Node child : childArray) {
             this.childArray.add(new Node(child));
         }
+    }
+
+    public Node getBestChildNode() {
+        var entry = getChildArray()
+            .stream()
+            .map(n -> {
+                var level = n.getState().getLevel();
+                var playerPosition = level.getPlayer().getPosition();
+                var filteredBags = level.getBaggs()
+                    .stream()
+                    //Ignore already completed baggages
+                    .filter(baggage -> level.getAreas().stream()
+                        .noneMatch(area -> area.getPosition().equals(baggage.getPosition())))
+                    .collect(Collectors.toList());
+
+                if (filteredBags.size() < 1) {
+                    return new SimpleEntry<>(n, Integer.MIN_VALUE);
+                }
+
+                return new SimpleEntry<>(n, filteredBags
+                    .stream()
+                    .map(baggage -> Utils.pathFinder(playerPosition, baggage.getPosition(), level,
+                                               character -> character != '#').size())
+                    .reduce(Integer::sum)
+                    .orElseThrow());
+            })
+            .min((entry1, entry2) -> entry2.getValue().compareTo(entry1.getValue()))
+            .orElseThrow();
+
+        return entry.getKey();
     }
 
     public Node getRandomChildNode() {

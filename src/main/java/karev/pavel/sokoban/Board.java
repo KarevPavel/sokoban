@@ -5,71 +5,88 @@ import java.awt.Graphics;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 import javax.swing.JPanel;
 import karev.pavel.sokoban.Level.Status;
 
 public class Board extends JPanel {
 
-    private final int OFFSET = 30;
-    private final int SPACE = 20;
-    private final int LEFT_COLLISION = 1;
-    private final int RIGHT_COLLISION = 2;
-    private final int TOP_COLLISION = 3;
-    private final int BOTTOM_COLLISION = 4;
+
+    private static final int SPACE = 20;
+
+    enum Collision {
+        LEFT_COLLISION,
+        RIGHT_COLLISION,
+        TOP_COLLISION,
+        BOTTOM_COLLISION
+    }
 
     private Level level;
 
-    private List<Wall> walls = new ArrayList<>();
-    private List<Baggage> baggs = new ArrayList<>();
-    private List<Area> areas = new ArrayList<>();
-    private Player player;
-
-    private boolean isCompleted = false;
-
-
-    public Board() throws IOException {
-
-        initBoard();
-        test();
+    public Board() throws IOException, URISyntaxException {
+        var completedUrl = ClassLoader.getSystemResource("levels/completed.txt");
+        List<String> completedLevels = Files.readAllLines(Paths.get(completedUrl.toURI()));
+        var lastLevel = "1";
+        if (!completedLevels.isEmpty()) {
+            String[] split = completedLevels.get(0).split(",");
+            lastLevel = split[split.length - 1];
+        }
+        initBoard(lastLevel);
     }
 
-
-    public void test() {
-        Tree tree = new Tree(level);
-        Node rootNode = tree.getRoot();
-
+    public void solveLevel() {
+        var tree = new Tree(level);
+        var rootNode = tree.getRoot();
+        Node winNode;
         while (true) {
             // Phase 1 - Selection
             var promisingNode = selectPromisingNode(rootNode);
             // Phase 2 - Expansion
             expandNode(promisingNode);
-            //promisingNode.getState().getLevel().print();
             // Phase 3 - Simulation
             var nodeToExplore = promisingNode;
             if (!promisingNode.getChildArray().isEmpty()) {
-                nodeToExplore = promisingNode.getRandomChildNode();
+                nodeToExplore = promisingNode.getBestChildNode();
             }
             Status playoutResult = simulateRandomPlayout(nodeToExplore);
             // Phase 4 - Update
             backPropogation(nodeToExplore, playoutResult);
 
             if (Status.COMPLETED == playoutResult) {
-
                 System.out.println("COMPLETED!!!");
+                winNode = nodeToExplore;
                 break;
             }
         }
 
+        Deque<Level> levels = new ArrayDeque<>();
+        while (Objects.nonNull(winNode.getParent())) {
+            levels.add(winNode.getState().getLevel());
+            winNode = winNode.getParent();
+        }
+
+        int number = 1;
+        while (!levels.isEmpty()) {
+            System.out.println("№" + number++);
+            levels.pop().print();
+        }
     }
 
     private void backPropogation(Node nodeToExplore, Status status) {
         var tempNode = nodeToExplore;
         while (tempNode != null) {
             tempNode.getState().incrementVisit();
-            if (tempNode.getState().hasCompletedBaggages())
+            if (tempNode.getState().hasCompletedBaggages()) {
                 tempNode.getState().addScore(50);
+            }
             tempNode.getState().setStatus(status);
             tempNode = tempNode.getParent();
         }
@@ -88,7 +105,7 @@ public class Board extends JPanel {
     }
 
     private Node selectPromisingNode(Node rootNode) {
-        Node node = rootNode;
+        var node = rootNode;
         while (!node.getChildArray().isEmpty()) {
             node = UCT.findBestNodeWithUCT(node);
         }
@@ -104,10 +121,11 @@ public class Board extends JPanel {
         });
     }
 
-    private void initBoard() throws IOException {
+    private void initBoard(String levelNumber) throws IOException {
         addKeyListener(new TAdapter());
         setFocusable(true);
-        level = Level.loadLevel("/home/yacopsae/IdeaProjects/Java-Sokoban-Game/src/main/resources/levels/level_1.txt");
+        URL systemResource = ClassLoader.getSystemResource(String.format("levels/level_%s.txt", levelNumber));
+        level = Level.loadLevel(systemResource.getPath());
     }
 
     private void buildWorld(Graphics g) {
@@ -117,16 +135,16 @@ public class Board extends JPanel {
 
         ArrayList<Actor> world = new ArrayList<>();
 
-        world.addAll(walls);
-        world.addAll(areas);
-        world.addAll(baggs);
-        world.add(player);
+        world.addAll(level.getWalls());
+        world.addAll(level.getAreas());
+        world.addAll(level.getBaggs());
+        world.add(level.getPlayer());
 
         for (Actor item : world) {
 
-            g.drawImage(item.getImage(), item.x(), item.y(), this);
+            g.drawImage(item.getImage(), item.x() * SPACE, item.y() * SPACE, this);
 
-            if (isCompleted) {
+            if (level.isCompleted()) {
                 g.setColor(new Color(0, 0, 0));
                 g.drawString("Completed", 25, 20);
             }
@@ -144,7 +162,7 @@ public class Board extends JPanel {
         @Override
         public void keyPressed(KeyEvent e) {
 
-            if (isCompleted) {
+            if (level.isCompleted()) {
                 return;
             }
 
@@ -153,61 +171,61 @@ public class Board extends JPanel {
             switch (key) {
 
                 case KeyEvent.VK_S:
-
+                    solveLevel();
                     break;
                 case KeyEvent.VK_LEFT:
 
-                    if (checkWallCollision(player, LEFT_COLLISION)) {
+                    if (checkWallCollision(level.getPlayer(), Collision.LEFT_COLLISION)) {
                         return;
                     }
 
-                    if (checkBagCollision(LEFT_COLLISION)) {
+                    if (checkBagCollision(Collision.LEFT_COLLISION)) {
                         return;
                     }
 
-                    player.move(-SPACE, 0);
+                    level.getPlayer().move(-SPACE, 0);
 
                     break;
 
                 case KeyEvent.VK_RIGHT:
 
-                    if (checkWallCollision(player, RIGHT_COLLISION)) {
+                    if (checkWallCollision(level.getPlayer(), Collision.RIGHT_COLLISION)) {
                         return;
                     }
 
-                    if (checkBagCollision(RIGHT_COLLISION)) {
+                    if (checkBagCollision(Collision.RIGHT_COLLISION)) {
                         return;
                     }
 
-                    player.move(SPACE, 0);
+                    level.getPlayer().move(SPACE, 0);
 
                     break;
 
                 case KeyEvent.VK_UP:
 
-                    if (checkWallCollision(player, TOP_COLLISION)) {
+                    if (checkWallCollision(level.getPlayer(), Collision.TOP_COLLISION)) {
                         return;
                     }
 
-                    if (checkBagCollision(TOP_COLLISION)) {
+                    if (checkBagCollision(Collision.TOP_COLLISION)) {
                         return;
                     }
 
-                    player.move(0, -SPACE);
+                    level.getPlayer().move(0, -SPACE);
 
                     break;
 
                 case KeyEvent.VK_DOWN:
 
-                    if (checkWallCollision(player, BOTTOM_COLLISION)) {
+                    if (checkWallCollision(level.getPlayer(), Collision.BOTTOM_COLLISION)) {
                         return;
                     }
 
-                    if (checkBagCollision(BOTTOM_COLLISION)) {
+                    if (checkBagCollision(Collision.BOTTOM_COLLISION)) {
                         return;
                     }
 
-                    player.move(0, SPACE);
+                    level.getPlayer().move(0, SPACE);
 
                     break;
 
@@ -225,15 +243,15 @@ public class Board extends JPanel {
         }
     }
 
-    private boolean checkWallCollision(Actor actor, int type) {
+    private boolean checkWallCollision(Actor actor, Collision type) {
 
         switch (type) {
 
             case LEFT_COLLISION:
 
-                for (int i = 0; i < walls.size(); i++) {
+                for (int i = 0; i < level.getWalls().size(); i++) {
 
-                    Wall wall = walls.get(i);
+                    Wall wall = level.getWalls().get(i);
 
                     if (actor.isLeftCollision(wall)) {
 
@@ -245,9 +263,9 @@ public class Board extends JPanel {
 
             case RIGHT_COLLISION:
 
-                for (int i = 0; i < walls.size(); i++) {
+                for (int i = 0; i < level.getWalls().size(); i++) {
 
-                    Wall wall = walls.get(i);
+                    Wall wall = level.getWalls().get(i);
 
                     if (actor.isRightCollision(wall)) {
                         return true;
@@ -258,9 +276,9 @@ public class Board extends JPanel {
 
             case TOP_COLLISION:
 
-                for (int i = 0; i < walls.size(); i++) {
+                for (int i = 0; i < level.getWalls().size(); i++) {
 
-                    Wall wall = walls.get(i);
+                    Wall wall = level.getWalls().get(i);
 
                     if (actor.isTopCollision(wall)) {
 
@@ -272,9 +290,9 @@ public class Board extends JPanel {
 
             case BOTTOM_COLLISION:
 
-                for (int i = 0; i < walls.size(); i++) {
+                for (int i = 0; i < level.getWalls().size(); i++) {
 
-                    Wall wall = walls.get(i);
+                    Wall wall = level.getWalls().get(i);
 
                     if (actor.isBottomCollision(wall)) {
 
@@ -291,7 +309,10 @@ public class Board extends JPanel {
         return false;
     }
 
-    private boolean checkBagCollision(int type) {
+    private boolean checkBagCollision(Collision type) {
+
+        List<Baggage> baggs = level.getBaggs();
+        var player = level.getPlayer();
 
         switch (type) {
 
@@ -314,13 +335,13 @@ public class Board extends JPanel {
                                 }
                             }
 
-                            if (checkWallCollision(bag, LEFT_COLLISION)) {
+                            if (checkWallCollision(bag, Collision.LEFT_COLLISION)) {
                                 return true;
                             }
                         }
 
                         bag.move(-SPACE, 0);
-                        isCompleted();
+                        level.isCompleted();
                     }
                 }
 
@@ -345,13 +366,13 @@ public class Board extends JPanel {
                                 }
                             }
 
-                            if (checkWallCollision(bag, RIGHT_COLLISION)) {
+                            if (checkWallCollision(bag, Collision.RIGHT_COLLISION)) {
                                 return true;
                             }
                         }
 
                         bag.move(SPACE, 0);
-                        isCompleted();
+                        level.isCompleted();
                     }
                 }
                 return false;
@@ -375,13 +396,13 @@ public class Board extends JPanel {
                                 }
                             }
 
-                            if (checkWallCollision(bag, TOP_COLLISION)) {
+                            if (checkWallCollision(bag, Collision.TOP_COLLISION)) {
                                 return true;
                             }
                         }
 
                         bag.move(0, -SPACE);
-                        isCompleted();
+                        level.isCompleted();
                     }
                 }
 
@@ -406,14 +427,14 @@ public class Board extends JPanel {
                                 }
                             }
 
-                            if (checkWallCollision(bag, BOTTOM_COLLISION)) {
+                            if (checkWallCollision(bag, Collision.BOTTOM_COLLISION)) {
 
                                 return true;
                             }
                         }
 
                         bag.move(0, SPACE);
-                        isCompleted();
+                        level.isCompleted();
                     }
                 }
 
@@ -425,19 +446,19 @@ public class Board extends JPanel {
 
         return false;
     }
-
+/*
     public void isCompleted() {
 
-        int nOfBags = baggs.size();
+        int nOfBags = level.getBaggs().size();
         int finishedBags = 0;
 
         for (int i = 0; i < nOfBags; i++) {
 
-            Baggage bag = baggs.get(i);
+            Baggage bag = level.getBaggs().get(i);
 
             for (int j = 0; j < nOfBags; j++) {
 
-                Area area = areas.get(j);
+                Area area = level.getAreas().get(j);
 
                 if (bag.x() == area.x() && bag.y() == area.y()) {
 
@@ -451,14 +472,15 @@ public class Board extends JPanel {
             isCompleted = true;
             repaint();
         }
-    }
+    }*/
 
     private void restartLevel() {
-
+/*
         if (isCompleted) {
             isCompleted = false;
-        }
+        }*/
     }
+
 
     /*
     private void printPositionArray(Position[][] arr) {
@@ -472,36 +494,6 @@ public class Board extends JPanel {
         System.out.println();
     }
 
-    private List<Position> pathFinder(Position start, Position destination, char[][] level, Predicate<Character> moveFilter) {
-        Queue<Position> queue = new ArrayDeque<>();
-        queue.add(start);
-        var cameFrom = new Position[levelHeight][levelWidth];
-        while (!queue.isEmpty()) {
-            Position current = queue.poll();
-            if (current.equals(destination)) {
-                break;
-            }
-            for (Position next : possibleMovies(current, level, moveFilter)) {
-                if (Objects.isNull(cameFrom[next.x][next.y])) {
-                    queue.add(next);
-                    cameFrom[next.x][next.y] = current;
-                }
-            }
-        }
-        printPositionArray(cameFrom);
-
-        var path = new LinkedList<Position>();
-        Position current = destination;
-        while (!current.equals(start)) {
-            path.addFirst(current);
-            current = cameFrom[current.x][current.y];
-            if (Objects.isNull(current)) {
-                return Collections.emptyList();
-            }
-        }
-
-        return path;
-    }
 
     Map<Baggage, List<Position>> bagsMoves() {
         Map<Baggage, List<Position>> answer = new HashMap<>();

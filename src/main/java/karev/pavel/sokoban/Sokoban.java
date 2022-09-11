@@ -2,16 +2,16 @@ package karev.pavel.sokoban;
 
 import java.awt.EventQueue;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import javax.swing.JFrame;
 
 public class Sokoban extends JFrame {
 
-    public Sokoban() throws IOException {
-
+    public Sokoban() throws IOException, URISyntaxException {
         initUI();
     }
 
-    private void initUI() throws IOException {
+    private void initUI() throws IOException, URISyntaxException {
         
         Board board = new Board();
         add(board);
@@ -32,7 +32,7 @@ public class Sokoban extends JFrame {
             try {
                 game = new Sokoban();
                 game.setVisible(true);
-            } catch (IOException e) {
+            } catch (IOException | URISyntaxException e) {
                 e.printStackTrace();
             }
         });

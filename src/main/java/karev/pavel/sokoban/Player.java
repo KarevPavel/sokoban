@@ -11,22 +11,17 @@ public class Player extends Actor {
 
     public Player(Player player) {
         super(player.x(), player.y());
-        this.position = new Position(player.getPosition());
         initPlayer();
     }
 
     public Player(int x, int y) {
         super(x, y);
-        position = new Position(x, y);
         initPlayer();
     }
 
-    private Position position;
-
     private void initPlayer() {
-
-        ImageIcon iicon = new ImageIcon("src/resources/sokoban.png");
-        Image image = iicon.getImage();
+        var icon = new ImageIcon(ClassLoader.getSystemResource("sokoban.png"));
+        var image = icon.getImage();
         setImage(image);
     }
 
@@ -37,9 +32,5 @@ public class Player extends Actor {
         
         setX(dx);
         setY(dy);
-    }
-
-    public Position getPosition() {
-        return position;
     }
 }

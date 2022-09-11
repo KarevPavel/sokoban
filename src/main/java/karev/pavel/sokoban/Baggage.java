@@ -20,7 +20,7 @@ public class Baggage extends Actor {
 
     private void initBaggage() {
         
-        var iicon = new ImageIcon("src/resources/baggage.png");
+        var iicon = new ImageIcon(ClassLoader.getSystemResource("baggage.png"));
         var image = iicon.getImage();
         setImage(image);
     }
