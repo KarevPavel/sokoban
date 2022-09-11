@@ -22,15 +22,6 @@ public class Baggage extends Actor {
         
         var iicon = new ImageIcon(ClassLoader.getSystemResource("baggage.png"));
         var image = iicon.getImage();
-        setImage(image);
-    }
-
-    public void move(int x, int y) {
-        
-        int dx = x() + x;
-        int dy = y() + y;
-        
-        setX(dx);
-        setY(dy);
+        setOriginalImage(image);
     }
 }

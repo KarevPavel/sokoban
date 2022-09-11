@@ -18,6 +18,6 @@ public class Area extends Actor {
     private void initArea() {
         ImageIcon iicon = new ImageIcon(ClassLoader.getSystemResource("area.png"));
         Image image = iicon.getImage();
-        setImage(image);
+        setOriginalImage(image);
     }
 }

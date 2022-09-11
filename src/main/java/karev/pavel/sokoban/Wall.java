@@ -2,8 +2,11 @@ package karev.pavel.sokoban;
 
 import java.awt.Image;
 import javax.swing.ImageIcon;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class Wall extends Actor {
 
     private Image image;
@@ -21,6 +24,6 @@ public class Wall extends Actor {
     private void initWall() {
         var icon = new ImageIcon(ClassLoader.getSystemResource("wall.png"));
         image = icon.getImage();
-        setImage(image);
+        setOriginalImage(image);
     }
 }

@@ -152,7 +152,10 @@ public class Level {
         return possibleMovies(player.getPosition(), character -> character != '#');
     }
 
+    @SneakyThrows
     public void print() {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
         System.out.print("  ");
         for (var x = 0; x < map[0].length; x++) {
             System.out.print(x % 10 + "|");
@@ -214,7 +217,7 @@ public class Level {
         map[currentPlayerPosition.x][currentPlayerPosition.y] = ' ';
         map[newPosition.x][newPosition.y] = '@';
         player.setPosition(newPosition);
-        print();
+        //print();
     }
 
     enum Status {
