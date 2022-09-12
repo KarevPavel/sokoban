@@ -34,8 +34,8 @@ public class Actor {
 
     private void move(int x, int y) {
 
-        int dx = x() + x;
-        int dy = y() + y;
+        int dx = x() + y;
+        int dy = y() + x;
 
         setX(dx);
         setY(dy);
@@ -58,22 +58,18 @@ public class Actor {
     }
 
     public boolean isLeftCollision(Actor actor) {
-        
-        return x() - 1 == actor.x() && y() == actor.y();
-    }
-
-    public boolean isRightCollision(Actor actor) {
-        
-        return x() + 1 == actor.x() && y() == actor.y();
-    }
-
-    public boolean isTopCollision(Actor actor) {
-        
         return y() - 1 == actor.y() && x() == actor.x();
     }
 
-    public boolean isBottomCollision(Actor actor) {
-        
+    public boolean isRightCollision(Actor actor) {
         return y() + 1 == actor.y() && x() == actor.x();
+    }
+
+    public boolean isTopCollision(Actor actor) {
+        return x() - 1 == actor.x() && y() == actor.y();
+    }
+
+    public boolean isBottomCollision(Actor actor) {
+        return x() + 1 == actor.x() && y() == actor.y();
     }
 }

@@ -3,7 +3,6 @@ package karev.pavel.sokoban;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Image;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
@@ -11,9 +10,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.time.temporal.ChronoField;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,7 +20,6 @@ import java.util.Stack;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import karev.pavel.sokoban.Level.Status;
-import karev.pavel.sokoban.Utils.Direction;
 import lombok.SneakyThrows;
 
 public class Board extends JPanel {
@@ -71,29 +67,21 @@ public class Board extends JPanel {
             backPropogation(nodeToExplore, playoutResult);
 
             if (Status.COMPLETED == playoutResult) {
-                System.out.println("COMPLETED!!!");
                 winNode = nodeToExplore;
                 break;
             }
         }
 
         Stack<Position> positions = new Stack<>();
-        Stack<Level> levels = new Stack<>();
+        //Stack<Level> levels = new Stack<>();
         while (Objects.nonNull(winNode.getParent())) {
-            levels.add(winNode.getState().getLevel());
+            //levels.add(winNode.getState().getLevel());
             positions.add(winNode.getState().getLevel().getPlayer().getPosition());
             winNode = winNode.getParent();
         }
-        levels.add(winNode.getState().getLevel());
+        //levels.add(winNode.getState().getLevel());
         positions.add(winNode.getState().getLevel().getPlayer().getPosition());
 
-        var number = 1;
-        while (!levels.isEmpty()) {
-            //System.out.println("№" + number++);
-            //var pos = positions.pop();
-            //System.out.println("PlayerPosition: [" + pos.x + " : " + pos.y + " ]");
-            levels.pop().print();
-        }
         return positions;
     }
 
@@ -146,45 +134,7 @@ public class Board extends JPanel {
         level = Level.loadLevel(systemResource.getPath());
     }
 
-    private boolean animationCompleted = false;
-    private boolean animationStated = false;
-    private Instant animationStart;
-    private int greenColor;
-
     private void buildWorld(Graphics g) {
-
-        if (level.isCompleted()) {
-
-            if (!animationStated) {
-                animationStart = Instant.now();
-                greenColor = 0;
-                animationStated = true;
-            }
-
-            var now = Instant.now();
-            Instant timeleft = now.minus(animationStart.toEpochMilli(), ChronoUnit.MILLIS);
-            if (timeleft.get(ChronoField.MILLI_OF_SECOND) > 50) {
-                greenColor += 10;
-                animationStart = now;
-            }
-
-            if (greenColor == 250) {
-                animationStated = false;
-                animationCompleted = true;
-            }
-
-            g.clearRect(0, 0, getWidth(), getHeight());
-            g.setColor(new Color(0, greenColor, 0));
-            g.fillRect(0, 0, this.getWidth(), this.getHeight());
-            g.setColor(Color.BLUE);
-            g.setFont(new Font(null, 0, 50));
-            g.drawString("COMPLETED", getWidth() / 2 - (5 * 25), getHeight() / 2);
-            if (!animationCompleted) {
-                updateUI();
-            }
-            return;
-        }
-
         g.setColor(new Color(255, 255, 255));
         g.fillRect(0, 0, this.getWidth(), this.getHeight());
 
@@ -210,12 +160,45 @@ public class Board extends JPanel {
         }
     }
 
+    private boolean addedWinAnimation = false;
+    private void winAnimation() {
+        if (!addedWinAnimation) {
+            addedWinAnimation = true;
+            animations.add(new Animation(this) {
+
+                private int greenColor = 0;
+
+                @Override
+                public void onFireUp() {
+                    greenColor += 10;
+                    var g = targetComponent.getGraphics();
+                    g.clearRect(0, 0, getWidth(), getHeight());
+                    g.setColor(new Color(0, greenColor, 0));
+                    g.fillRect(0, 0, targetComponent.getWidth(), targetComponent.getHeight());
+                    g.setColor(Color.BLUE);
+                    g.setFont(new Font(null, 0, 50));
+                    g.drawString("COMPLETED", getWidth() / 2 - (5 * 25), getHeight() / 2);
+                    g.drawString("Press N - Go next level", getWidth() / 2 - (12 * 25), getHeight() / 2 + 50);
+                    targetComponent.repaint();
+                }
+
+                @Override
+                public boolean finishCondition() {
+                    return greenColor == 250;
+                }
+            });
+        }
+    }
+
     @Override
     public void paintComponent(Graphics g) {
 
         super.paintComponent(g);
 
-        buildWorld(g);
+        if (!level.isCompleted())
+            buildWorld(g);
+        else
+            winAnimation();
 
         ListIterator<Animation> iterator = animations.listIterator();
         while (iterator.hasNext()) {
@@ -250,7 +233,7 @@ public class Board extends JPanel {
                 case KeyEvent.VK_S:
                     Stack<Position> positions = solveLevel();
 
-                    animations.add(new Animation(jComponent, ChronoField.MILLI_OF_DAY, 1000) {
+                    animations.add(new Animation(jComponent, ChronoField.MILLI_OF_DAY, 700) {
 
                         @Override
                         public void onFireUp() {
@@ -330,9 +313,7 @@ public class Board extends JPanel {
                     break;
 
                 case KeyEvent.VK_R:
-
                     restartLevel();
-
                     break;
 
                 default:
@@ -548,6 +529,7 @@ public class Board extends JPanel {
     }
 
     private void restartLevel() {
+        addedWinAnimation = false;
         initBoard();
         buildWorld(getGraphics());
     }

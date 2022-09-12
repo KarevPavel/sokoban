@@ -22,6 +22,7 @@ public abstract class Animation {
         this.targetComponent = targetComponent;
     }
 
+    public void onFinish() {}
     public abstract void onFireUp();
     public abstract boolean finishCondition();
 
@@ -31,7 +32,7 @@ public abstract class Animation {
     private boolean animationCompleted = false;
     private Instant animationStart;
 
-    private final JComponent targetComponent;
+    protected final JComponent targetComponent;
     private final ChronoField unit;
     private final int timeleft;
 
@@ -53,6 +54,7 @@ public abstract class Animation {
         if (finishCondition()) {
             animationStated = false;
             animationCompleted = true;
+            onFinish();
         }
 
         if (!animationCompleted) {
